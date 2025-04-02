@@ -12,7 +12,7 @@ This is a multi-part message in MIME format.
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: quoted-printable
 
-This is the body of a test email
+This is the body of a test email, {{name}}.
 
 
 Here is a cat

@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
-use lettre::transport::smtp::authentication::Credentials;
+use lettre::transport::smtp::authentication::{Credentials, Mechanism};
+use lettre::transport::smtp::client::{Tls, TlsParameters};
 use lettre::{Message, SmtpTransport, Transport};
 
 pub struct Email<'a> {
@@ -11,9 +12,14 @@ pub struct Email<'a> {
 
 /** Sets up connection with outlook/whatnot */
 pub fn connect_smtp(creds: Credentials) -> Result<SmtpTransport> {
-    let mailer = SmtpTransport::relay("smtp.outlook.com")
+    let server = "smtp.office365.com";
+
+    let mailer = SmtpTransport::relay(server)
         .context("Failed to connect to SMTP server")?
+        .port(587)
         .credentials(creds)
+        .authentication(vec![Mechanism::Login])
+        .tls(Tls::Required(TlsParameters::new(server.to_string())?))
         .build();
 
     Ok(mailer)
