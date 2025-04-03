@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use lettre::message::{MultiPart, SinglePart, header};
 use lettre::transport::smtp::authentication::{Credentials, Mechanism};
 use lettre::transport::smtp::client::{Tls, TlsParameters};
 use lettre::{Message, SmtpTransport, Transport};
@@ -26,15 +27,36 @@ pub fn connect_smtp(creds: Credentials) -> Result<SmtpTransport> {
 }
 
 /** Sends email to a contact */
-pub fn send_email(mailer: &SmtpTransport, email: &Email) -> Result<()> {
-    let email = Message::builder()
-        .from(email.from.parse().context("Invalid email address")?)
-        .to(email.to.parse().context("Invalid email address")?)
-        .subject(email.subject.to_string())
-        .body(email.body.to_string())
-        .unwrap();
+pub fn send_email(
+    mailer: &SmtpTransport,
+    email: &Email,
+    attachment: &Option<SinglePart>,
+) -> Result<()> {
+    let to_send = if attachment.is_none() {
+        Message::builder()
+            .from(email.from.parse().context("Invalid email address")?)
+            .to(email.to.parse().context("Invalid email address")?)
+            .subject(email.subject.to_string())
+            .body(email.body.to_string())?
+    } else {
+        let attachment = attachment.as_ref().unwrap();
 
-    mailer.send(&email).context("Failed to send email")?;
+        Message::builder()
+            .from(email.from.parse().context("Invalid email address")?)
+            .to(email.to.parse().context("Invalid email address")?)
+            .subject(email.subject.to_string())
+            .multipart(
+                MultiPart::mixed()
+                    .singlepart(
+                        SinglePart::builder()
+                            .header(header::ContentType::TEXT_HTML)
+                            .body(email.body.to_string()),
+                    )
+                    .singlepart(attachment.clone()),
+            )?
+    };
+
+    mailer.send(&to_send).context("Failed to send email")?;
 
     Ok(())
 }

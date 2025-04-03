@@ -1,7 +1,9 @@
 use anyhow::{Context, Result};
 use csv::Reader;
 use eml_parser::{EmlParser, eml::Eml};
-use std::{fs::File, path::Path};
+use lettre::message::header::ContentType;
+use lettre::message::{Attachment, SinglePart};
+use std::{fs, fs::File, path::Path};
 
 #[derive(Debug)]
 pub struct Contact {
@@ -62,6 +64,29 @@ pub fn load_email_template() -> Result<(String, String)> {
     let (subject, body) = get_email_info(parsed)?;
 
     Ok((subject, body))
+}
+
+/** Gets a single attachment from the attachments directory */
+pub fn get_attachment() -> Result<Option<SinglePart>> {
+    let attachments: Vec<_> = fs::read_dir("attachments")
+        .context("Failed to read attachments directory")?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+
+    if attachments.len() > 1 {
+        return Err(anyhow::anyhow!("More than one attachment found"));
+    }
+
+    match attachments.first() {
+        None => Ok(None),
+        Some(found) => {
+            let filename = found.file_name().to_string_lossy().into_owned();
+            let filebody = fs::read(found.path()).context("Failed to read attachment")?;
+            let content_type = ContentType::parse("application/pdf")?;
+            let attachment = Attachment::new(filename).body(filebody, content_type);
+
+            Ok(Some(attachment))
+        }
+    }
 }
 
 #[cfg(test)]
