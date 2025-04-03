@@ -34,16 +34,16 @@ pub fn send_email(
 ) -> Result<()> {
     let to_send = if attachment.is_none() {
         Message::builder()
-            .from(email.from.parse().context("Invalid email address")?)
-            .to(email.to.parse().context("Invalid email address")?)
+            .from(email.from.parse()?)
+            .to(email.to.parse()?)
             .subject(email.subject.to_string())
             .body(email.body.to_string())?
     } else {
         let attachment = attachment.as_ref().unwrap();
 
         Message::builder()
-            .from(email.from.parse().context("Invalid email address")?)
-            .to(email.to.parse().context("Invalid email address")?)
+            .from(email.from.parse()?)
+            .to(email.to.parse()?)
             .subject(email.subject.to_string())
             .multipart(
                 MultiPart::mixed()
