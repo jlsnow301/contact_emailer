@@ -11,6 +11,9 @@ pub struct Contact {
     pub email: String,
 }
 
+const FIVE_MB: u64 = 5 * 1024 * 1024; // 5MB 
+const TEN_MB: u64 = 10 * 1024 * 1024; // 10MB 
+
 /** Gets contacts from the contacts.csv file */
 pub fn get_contacts() -> Result<Vec<Contact>> {
     let path = Path::new("contacts.csv");
@@ -60,6 +63,8 @@ fn get_email_info(parsed: Eml) -> Result<(String, String)> {
 
 /** Loads an email template from a template.eml file */
 pub fn load_email_template() -> Result<(String, String)> {
+    check_file_size("template.eml", TEN_MB)?;
+
     let parsed = get_parsed_template()?;
     let (subject, body) = get_email_info(parsed)?;
 
@@ -79,14 +84,32 @@ pub fn get_attachment() -> Result<Option<SinglePart>> {
     match attachments.first() {
         None => Ok(None),
         Some(found) => {
-            let filename = found.file_name().to_string_lossy().into_owned();
-            let filebody = fs::read(found.path()).context("Failed to read attachment")?;
-            let content_type = ContentType::parse("application/pdf")?;
-            let attachment = Attachment::new(filename).body(filebody, content_type);
+            check_file_size(found.path().to_str().unwrap(), FIVE_MB)?;
+
+            let attachment = Attachment::new(found.file_name().to_string_lossy().into_owned())
+                .body(
+                    fs::read(found.path()).context("Failed to read attachment")?,
+                    ContentType::parse("application/pdf")?,
+                );
 
             Ok(Some(attachment))
         }
     }
+}
+
+/** Checks if files are too large */
+pub fn check_file_size(path: &str, max_size: u64) -> Result<()> {
+    let metadata = fs::metadata(path).context("Failed to get metadata")?;
+    let size = metadata.len();
+
+    if size > max_size {
+        return Err(anyhow::anyhow!(
+            "A file is too large. Max size is {}.",
+            if max_size == FIVE_MB { "5MB" } else { "10MB" }
+        ));
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -94,7 +117,6 @@ mod tests {
     use super::*;
 
     #[test]
-
     fn test_get_email_info() {
         let mut template = EmlParser::from_file("src/test/test.eml").unwrap();
         let parsed = template.parse().unwrap();

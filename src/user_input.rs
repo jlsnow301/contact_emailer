@@ -1,5 +1,7 @@
 use anyhow::{Context, Result};
-use inquire::{Confirm, Password, PasswordDisplayMode, Text, validator::Validation};
+use dotenv::dotenv;
+use inquire::Confirm;
+use std::env;
 
 /** Does this look ok? */
 pub fn confirm_contacts() -> Result<()> {
@@ -22,28 +24,10 @@ pub fn confirm_contacts() -> Result<()> {
 
 /** Prompt for email and password */
 pub fn get_credentials() -> Result<(String, String)> {
-    let validator = |input: &str| {
-        if input.chars().count() < 3 {
-            Ok(Validation::Invalid(
-                "Must be at least 3 characters long".into(),
-            ))
-        } else {
-            Ok(Validation::Valid)
-        }
-    };
+    dotenv().ok();
 
-    let email = Text::new("Enter your email:")
-        .with_validator(validator)
-        .prompt()
-        .context("Failed to get email")?;
-
-    let password = Password::new("Enter your password:")
-        .with_display_toggle_enabled()
-        .with_display_mode(PasswordDisplayMode::Masked)
-        .with_validator(validator)
-        .with_help_message("You can reveal this by keying CTRL-R.")
-        .prompt()
-        .context("Failed to get password")?;
+    let email = env::var("EMAIL").context("Our email is not set")?;
+    let password = env::var("PASS").context("Our password is not set")?;
 
     if email.is_empty() || password.is_empty() {
         return Err(anyhow::anyhow!("Email or password is empty"));
